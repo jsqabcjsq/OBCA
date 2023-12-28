@@ -39,34 +39,34 @@ include("./a_star.jl")
 include("./collision_check.jl")
 
 
-const VEHICLE_RADIUS = 1.0 #[m]; radius of rear ball; 7.0 
-const BUBBLE_DIST = 1.7 #[m]; distance to "forward bubble"; 7.0
+VEHICLE_RADIUS = 1.0 #[m]; radius of rear ball; 7.0 
+BUBBLE_DIST = 1.7 #[m]; distance to "forward bubble"; 7.0
 
 ##### Fast Comp Time values from Alex Liniger ######
-const OB_MAP_RESOLUTION = 0.1 #[m]; obstacle resolution
-const YAW_GRID_RESOLUTION = deg2rad(5.0) #[m]; 10.0 /// 5.0
-const N_STEER = 5.0 # number of steer command; 10.0 seems OK /// 5
+OB_MAP_RESOLUTION = 0.1 #[m]; obstacle resolution
+YAW_GRID_RESOLUTION = deg2rad(5.0) #[m]; 10.0 /// 5.0
+N_STEER = 5.0 # number of steer command; 10.0 seems OK /// 5
 ## For Backwards Parking
-# const XY_GRID_RESOLUTION = 1. #[m];
-# const MOTION_RESOLUTION = 0.3 #[m];
+# XY_GRID_RESOLUTION = 1. #[m];
+# MOTION_RESOLUTION = 0.3 #[m];
 ## For Parallel Parking
-const XY_GRID_RESOLUTION = 0.3 #[m];
-const MOTION_RESOLUTION = 0.1 #[m];
+XY_GRID_RESOLUTION = 0.3 #[m];
+MOTION_RESOLUTION = 0.1 #[m];
 ###################################################
 
-const USE_HOLONOMIC_WITH_OBSTACLE_HEURISTIC = true
-const USE_NONHOLONOMIC_WITHOUT_OBSTACLE_HEURISTIC = false
+USE_HOLONOMIC_WITH_OBSTACLE_HEURISTIC = true
+USE_NONHOLONOMIC_WITHOUT_OBSTACLE_HEURISTIC = false
 
-const SB_COST = 10.0 # switch back penalty cost
-const BACK_COST = 0.0 # backward penalty cost
-const STEER_CHANGE_COST = 10.0 # steer angle change penalty cost
-const STEER_COST = 0.0  # steer angle  penalty cost
-const H_COST = 1. # Heuristic cost; higher -> heuristic; 1.0
+SB_COST = 10.0 # switch back penalty cost
+BACK_COST = 0.0 # backward penalty cost
+STEER_CHANGE_COST = 10.0 # steer angle change penalty cost
+STEER_COST = 0.0  # steer angle  penalty cost
+H_COST = 1. # Heuristic cost; higher -> heuristic; 1.0
  
-const WB = 2.7 #[m]; 7.0
-const MAX_STEER = 0.6#deg2rad(35.0) #[rad]
+WB = 2.7 #[m]; 7.0
+MAX_STEER = 0.6#deg2rad(35.0) #[rad]
 
-type Node
+mutable struct Node
     xind::Int64 #x index
     yind::Int64 #y index
     yawind::Int64 #yaw index
@@ -79,7 +79,7 @@ type Node
     pind::Int64 # parent index
 end
 
-type Config
+mutable struct Config
     minx::Int64
     miny::Int64
     minyaw::Int64
@@ -120,7 +120,7 @@ function calc_hybrid_astar_path(sx::Float64, sy::Float64, syaw::Float64,
 
     syaw, gyaw = pi_2_pi(syaw), pi_2_pi(gyaw)
 
-    const c = calc_config(ox, oy, xyreso, yawreso, obreso)
+    c = calc_config(ox, oy, xyreso, yawreso, obreso)
     kdtree = KDTree(hcat(ox, oy)')
     obmap, gkdtree = calc_obstacle_map(ox, oy, c)
     nstart = Node(round(Int64,sx/xyreso), round(Int64,sy/xyreso), round(Int64, syaw/yawreso),true,[sx],[sy],[syaw],0.0,0.0, -1)
@@ -129,12 +129,12 @@ function calc_hybrid_astar_path(sx::Float64, sy::Float64, syaw::Float64,
     if USE_HOLONOMIC_WITH_OBSTACLE_HEURISTIC
         h_dp = calc_holonomic_with_obstacle_heuristic(ngoal, ox, oy, xyreso)
     else
-        h_dp = Array{Float64}()
+        h_dp = Array{Float64}(undef)
     end
     if USE_NONHOLONOMIC_WITHOUT_OBSTACLE_HEURISTIC
         h_rs = calc_nonholonomic_without_obstacle_heuristic(ngoal, c)
     else
-        h_rs = Array{Float64}()
+        h_rs = Array{Float64}(undef)
     end
 
     open, closed = Dict{Int64, Node}(), Dict{Int64, Node}()
@@ -185,7 +185,6 @@ function calc_hybrid_astar_path(sx::Float64, sy::Float64, syaw::Float64,
     # println("final expand node:", length(open) + length(closed))
 
     rx, ry, ryaw = get_final_path(closed, ngoal, nstart, c)
-
     return rx, ry, ryaw
 end
 
@@ -612,7 +611,6 @@ function main()
     end
 
     @time rx, ry, ryaw = calc_hybrid_astar_path(sx, sy, syaw, gx, gy, gyaw, ox, oy, XY_GRID_RESOLUTION, YAW_GRID_RESOLUTION, OB_MAP_RESOLUTION)
-
     plot(ox, oy, ".k",label="obstacles")
     if rx != nothing
         plot(rx, ry, "-r",label="Hybrid A* path")

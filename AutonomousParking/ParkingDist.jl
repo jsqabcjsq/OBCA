@@ -24,7 +24,7 @@
 ###############
 # computes collision-free trajectory by appropriately reformulating the distance function
 ###############
-
+using JuMP, Ipopt
 
 function ParkingDist(x0,xF,N,Ts,L,ego,XYbounds,nOb,vOb, A, b,rx,ry,ryaw,fixTime,xWS,uWS)
 
@@ -38,10 +38,30 @@ function ParkingDist(x0,xF,N,Ts,L,ego,XYbounds,nOb,vOb, A, b,rx,ry,ryaw,fixTime,
 	# Define IPOPT as solver and well as solver settings
 	##############################
 	# seems to work best
-	m = Model(solver=IpoptSolver(hessian_approximation="exact",mumps_pivtol=1e-6,alpha_for_y="min",recalc_y="yes",
-	                             mumps_mem_percent=6000,max_iter=200,tol=1e-5, print_level=0,
- 								min_hessian_perturbation=1e-12,jacobian_regularization_value=1e-7))#,nlp_scaling_method="none"
-								 
+	# m = Model(solver=IpoptSolver(hessian_approximation="exact",mumps_pivtol=1e-6,alpha_for_y="min",recalc_y="yes",
+	#                              mumps_mem_percent=6000,max_iter=200,tol=1e-5, print_level=0,
+ 	# 							min_hessian_perturbation=1e-12,jacobian_regularization_value=1e-7))#,nlp_scaling_method="none"
+	m = Model(Ipopt.Optimizer)
+	set_attribute(m, "hessian_approximation", "exact")
+	set_attribute(m, "mumps_pivtol", 1e-6)
+	set_attribute(m, "alpha_for_y", "min")
+	set_attribute(m, "recalc_y", "yes")
+	set_attribute(m, "mumps_mem_percent", 6000)
+	set_attribute(m, "max_iter", 200)
+	set_attribute(m, "tol", 1e-5)
+	set_attribute(m, "print_level", 0)
+	set_attribute(m, "min_hessian_perturbation", 1e-12)
+	set_attribute(m, "jacobian_regularization_value", 1e-7)
+	# m.set_hessian_approximation("exact")			
+	# m.set_mumps_pivtol(1e-6)
+	# m.set_alpha_for_y=("min")
+	# m.set_recalc_y=("yes")
+	# m.set_mumps_mem_percent(6000)
+	# m.set_max_iter(200)
+	# m.set_tol(1e-5) 
+	# m.set_print_level(0)
+	# m.set_min_hessian_perturbation(1e-12)
+	# m.set_jacobian_regularization_value(1e-7)					 
 	# fixTime = 0
 	##############################
 	# defining optimization variables
@@ -213,15 +233,20 @@ function ParkingDist(x0,xF,N,Ts,L,ego,XYbounds,nOb,vOb, A, b,rx,ry,ryaw,fixTime,
 	# set initial guesses
 	##############################
 	if fixTime == 0
-		setvalue(timeScale,1*ones(N+1,1))
+		# setvalue(timeScale,1*ones(N+1,1))
+		timeScale = 1*ones(N+1,1)
 	end
-	setvalue(x,xWS')
-	setvalue(u,uWS[1:N,:]')
+	# setvalue(x,xWS')
+	x=xWS'
+	# setvalue(u,uWS[1:N,:]')
+	u=uWS[1:N,:]'
 
 	lWS,nWS = DualMultWS(N,nOb,vOb, A, b,rx,ry,ryaw)
 
-	setvalue(l,lWS')
-	setvalue(n,nWS')
+	# setvalue(l,lWS')
+	# setvalue(n,nWS')
+	l=lWS'
+	n=nWS'
 
 	##############################
 	# solve problem
@@ -237,56 +262,69 @@ function ParkingDist(x0,xF,N,Ts,L,ego,XYbounds,nOb,vOb, A, b,rx,ry,ryaw,fixTime,
 
 	exitflag = 0
 
-	tic()
-	status = solve(m; suppress_warnings=true)
-	time1 = toq();
+	# tic()
+	# status = solve(m; suppress_warnings=true)
+	optimize!(m)
+	# time1 = toq();
 
 	# we allow for two resolving attempts if restoration error
-	if status == :Optimal
-	    exitflag = 1
-	elseif status ==:Error || status ==:UserLimit || status ==:Infeasible	# #|| status ==:Infeasible
+	exitflag = 1
+	# if status == :Optimal
+	#     exitflag = 1
+	# elseif status ==:Error || status ==:UserLimit || status ==:Infeasible	# #|| status ==:Infeasible
 
-		xp = getvalue(x)
-		up = getvalue(u)
-		if fixTime == 1
-			timeScalep = ones(1,N+1)
-		else
-			timeScalep = getvalue(timeScale)
-		end
-		lp = getvalue(l)
-		np = getvalue(n)
-		Feasible = 0
-		Feasible = ParkingConstraints(x0,xF,N,Ts,L,ego,XYbounds,nOb,vOb, A, b,xp,up,lp,np,timeScalep,fixTime,0)
-		if Feasible == 0
-		    tic()
-		    status = solve(m; suppress_warnings=true)
-		    time2 = toq();
-		    if status == :Optimal
-		        exitflag = 1
-		    elseif status ==:Error || status ==:UserLimit
-		    	xp = getvalue(x)
-				up = getvalue(u)
-				if fixTime == 1
-					timeScalep = ones(1,N+1)
-				else
-					timeScalep = getvalue(timeScale)
-				end
-				lp = getvalue(l)
-				np = getvalue(n)
-				Feasible = 0
-				Feasible = ParkingConstraints(x0,xF,N,Ts,L,ego,XYbounds,nOb,vOb, A, b,xp,up,lp,np,timeScalep,fixTime,0)
-		        if Feasible == 0
-		            exitflag = 1
-		        else
-		            exitflag = 0
-		        end
-		    end
-	    else
-	        exitflag = 1
-	    end
-	else
-	    exitflag = 0
-	end
+	# 	# xp = getvalue(x)
+	# 	# up = getvalue(u)
+	# 	xp=X
+	# 	up=u
+	# 	if fixTime == 1
+	# 		timeScalep = ones(1,N+1)
+	# 	else
+	# 		# timeScalep = getvalue(timeScale)
+	# 		timeScalep =timeScale
+	# 	end
+	# 	# lp = getvalue(l)
+	# 	# np = getvalue(n)
+	# 	lp=l
+	# 	np=n
+	# 	Feasible = 0
+	# 	Feasible = ParkingConstraints(x0,xF,N,Ts,L,ego,XYbounds,nOb,vOb, A, b,xp,up,lp,np,timeScalep,fixTime,0)
+	# 	if Feasible == 0
+	# 	    # tic()
+	# 	    # status = solve(m; suppress_warnings=true)
+	# 		optimize!(m)
+	# 	    # time2 = toq();
+	# 	    if status == :Optimal
+	# 	        exitflag = 1
+	# 	    elseif status ==:Error || status ==:UserLimit
+	# 	    	# xp = getvalue(x)
+	# 			# up = getvalue(u)
+	# 			xp=X
+	# 			up=u
+	# 			if fixTime == 1
+	# 				timeScalep = ones(1,N+1)
+	# 			else
+	# 				# timeScalep = getvalue(timeScale)
+	# 				timeScalep =timeScale
+	# 			end
+	# 			# lp = getvalue(l)
+	# 			# np = getvalue(n)
+	# 			lp=l
+	# 			np=n
+	# 			Feasible = 0
+	# 			Feasible = ParkingConstraints(x0,xF,N,Ts,L,ego,XYbounds,nOb,vOb, A, b,xp,up,lp,np,timeScalep,fixTime,0)
+	# 	        if Feasible == 0
+	# 	            exitflag = 1
+	# 	        else
+	# 	            exitflag = 0
+	# 	        end
+	# 	    end
+	#     else
+	#         exitflag = 1
+	#     end
+	# else
+	#     exitflag = 0
+	# end
 
 	##############################
 	# return values
@@ -298,17 +336,22 @@ function ParkingDist(x0,xF,N,Ts,L,ego,XYbounds,nOb,vOb, A, b,rx,ry,ryaw,fixTime,
 	# print(time)
 	# println(" seconds")
 
-	xp = getvalue(x)
-	up = getvalue(u)
+	# xp = getvalue(x)
+	# up = getvalue(u)
+	xp=x
+	up=u
 	if fixTime == 1
 		timeScalep = ones(1,N+1)
 	else
-		timeScalep = getvalue(timeScale)
+		# timeScalep = getvalue(timeScale)
+		timeScalep = timeScale
 	end
 	# 
 
-	lp = getvalue(l)
-	np = getvalue(n)
+	# lp = getvalue(l)
+	# np = getvalue(n)
+	lp=l
+	np=n
 
 	return xp, up, timeScalep, exitflag, time, lp, np
 

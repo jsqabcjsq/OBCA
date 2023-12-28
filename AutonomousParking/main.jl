@@ -98,7 +98,7 @@ if scenario == "backwards"
 	# obstacles for optimization problem
 	nOb =  3 	# number of obstacles 
 	vOb = [3 3 2]	# number of vertices of each obstacle, vector of dimenion nOb
-	vObMPC = vOb-1
+	vObMPC = vOb.-1
 	lOb = [   [ [-20;5], [-1.3;5], [-1.3;-5]]  , 
 	 	  [ [1.3;-5] , [1.3;5] , [20;5] ] , 
 		  [ [20;11], [-20;11]]	]		#vetices given in CLOCK-WISE direction
@@ -213,10 +213,7 @@ XYbounds =  [ -15   , 15      ,  1      ,  10       ]	# constraints are on (X,Y)
 x0 = [-6  9.5   0.0    0.0]
 
 # call Hybrid A*
-tic()
 rx, ry, ryaw = hybrid_a_star.calc_hybrid_astar_path(x0[1], x0[2], x0[3], xF[1], xF[2], xF[3], ox, oy, hybrid_a_star.XY_GRID_RESOLUTION, hybrid_a_star.YAW_GRID_RESOLUTION, hybrid_a_star.OB_MAP_RESOLUTION)
-timeHybAstar = toq();
-
 
 ### extract (smooth) velocity profile from Hybrid A* solution ####
 rv = zeros(length(rx),1)
@@ -230,8 +227,15 @@ end
 ### Smoothen velocity 0.3 m/s^2 max acceleration ###
 v,a = veloSmooth(rv,0.3,Ts/sampleN)
 ### compute steering angle ###
-delta = atan(diff(ryaw)*L/motionStep.*sign(v[1:end-1]));
 
+ryaw_vec=diff(vec(ryaw))*L/motionStep
+delta=zeros(1,length(v)-1)
+for i=1:length(v)-1
+	delta[i]=atan(ryaw_vec[i]*sign(v[i]))
+end
+
+println("delta")
+println(typeof(delta))
 
 ### Down-sample for Warmstart ##########
 rx_sampled = rx[1:sampleN:end]	# : 5
@@ -245,6 +249,9 @@ delta_sampled = delta[1:sampleN:end]
 
 ## initialize warm start solution
 xWS = [rx_sampled ry_sampled ryaw_sampled v_sampled]
+println(typeof(delta_sampled))
+println("########################")
+println(typeof(a_sampled))
 uWS = [delta_sampled a_sampled]					
 
 ### prepare for OBCA ###
@@ -265,22 +272,22 @@ end
 
 
 ###### park using Signed Distance Approach ######
-println("Parking using Signed Distance Approach (A* warm start)")
-xp10, up10, scaleTime10, exitflag10, time10, lp10, np10 = ParkingSignedDist(x0,xF,N,Ts,L,ego,XYbounds,nOb,vObMPC,AOb,bOb,rx_sampled,ry_sampled,ryaw_sampled,fixTime,xWS,uWS)
-if exitflag10==1
-	println("  --> Signed Distance: SUCCESSFUL.")
-	plotTraj(xp10',up10',length(rx_sampled)-1,ego,L,nObPlot,vObPlot,lObPlot,"Signed Distance Approach (Min. Penetration)",1)
+# println("Parking using Signed Distance Approach (A* warm start)")
+# xp10, up10, scaleTime10, exitflag10, time10, lp10, np10 = ParkingSignedDist(x0,xF,N,Ts,L,ego,XYbounds,nOb,vObMPC,AOb,bOb,rx_sampled,ry_sampled,ryaw_sampled,fixTime,xWS,uWS)
+# if exitflag10==1
+# 	println("  --> Signed Distance: SUCCESSFUL.")
+# 	# plotTraj(xp10',up10',length(rx_sampled)-1,ego,L,nObPlot,vObPlot,lObPlot,"Signed Distance Approach (Min. Penetration)",1)
 	
-else
-	println("  --> WARNING: Problem could not be solved.")
-end
+# else
+# 	println("  --> WARNING: Problem could not be solved.")
+# end
 
 
 
 println("********************* summary *********************")
-println("  Time Hybrid A*: ", timeHybAstar, " s")
+# println("  Time Hybrid A*: ", timeHybAstar, " s")
 println("  Time Distance approach: ", time20, " s")
-println("  Time Signed Distance approach: ", time10, " s")
+# println("  Time Signed Distance approach: ", time10, " s")
 
 println("********************* DONE *********************")
 

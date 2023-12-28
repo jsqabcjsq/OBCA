@@ -26,6 +26,7 @@
 ###############
 # 
 # 
+using JuMP, Ipopt
 function DualMultWS(N,nOb,vOb, A, b,rx,ry,ryaw)
 
 	x = zeros(3,N+1)
@@ -33,9 +34,15 @@ function DualMultWS(N,nOb,vOb, A, b,rx,ry,ryaw)
 	x[2,:] = ry
 	x[3,:] = ryaw
 
-	m = Model(solver=IpoptSolver(hessian_approximation="exact",mumps_pivtol=1e-5,
-	                             max_iter=100,tol=1e-5, print_level=0, suppress_all_output="yes"))
-
+	# m = Model(solver=IpoptSolver(hessian_approximation="exact",mumps_pivtol=1e-5,
+	#                              max_iter=100,tol=1e-5, print_level=0, suppress_all_output="yes"))
+	m = Model(Ipopt.Optimizer)
+	set_attribute(m, "hessian_approximation", "exact")
+	set_attribute(m, "mumps_pivtol", 1e-5)
+	set_attribute(m, "max_iter", 100)
+	set_attribute(m, "tol", 1e-5)
+	set_attribute(m, "print_level",0)
+	set_attribute(m, "suppress_all_output", "yes")
 	W_ev = ego[2]+ego[4]
 	L_ev = ego[1]+ego[3]
 
@@ -73,13 +80,16 @@ function DualMultWS(N,nOb,vOb, A, b,rx,ry,ryaw)
 							+ (x[2,i]+sin(x[3,i])*offset)*sum(Aj[k,2]*lj[k,i] for k=1:vOb[j]) - sum(bj[k]*lj[k,i] for k=1:vOb[j]))
 		end
 	end
-	tic()
-	solve(m)
-	time = toq();
+	# tic()
+	# solve(m)
+	optimize!(m)
+	# time = toq();
 	# print("Auxillery Problem time = ",time,"\n")
 
-	lp = getvalue(l)'
-	np = getvalue(n)'
+	# lp = getvalue(l)'
+	# np = getvalue(n)'
+	lp=l'
+	np=n'
 
 	return lp,np
 

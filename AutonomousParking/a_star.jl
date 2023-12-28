@@ -32,11 +32,11 @@ using PyPlot
 using NearestNeighbors
 using DataStructures 
 
-const VEHICLE_RADIUS = 5.0 #[m]
-const GRID_RESOLUTION = 1.0 #[m]
+VEHICLE_RADIUS = 5.0 #[m]
+GRID_RESOLUTION = 1.0 #[m]
 
 
-type Node
+mutable struct Node
     x::Int64 #x index
     y::Int64 #y index
     cost::Float64 # cost

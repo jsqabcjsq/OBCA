@@ -28,14 +28,14 @@ module collision_check
 using NearestNeighbors
 using PyPlot
 
-const B = 1.0 #[m] distance from rear to vehicle back end
-const C = 3.7 #[m] distance from rear to vehicle front end
-const I = 2.0 #[m] width of vehicle
-const WBUBBLE_DIST = (B+C)/2.0-B #[m] distance from rear and the center of whole bubble
-const WBUBBLE_R = (B+C)/2.0 #[m] whole bubble radius
+B = 1.0 #[m] distance from rear to vehicle back end
+C = 3.7 #[m] distance from rear to vehicle front end
+I = 2.0 #[m] width of vehicle
+WBUBBLE_DIST = (B+C)/2.0-B #[m] distance from rear and the center of whole bubble
+WBUBBLE_R = (B+C)/2.0 #[m] whole bubble radius
 
-const vrx = [C, C, -B, -B, C ]
-const vry = [-I/2.0, I/2.0, I/2.0, -I/2.0, -I/2.0]
+vrx = [C, C, -B, -B, C ]
+vry = [-I/2.0, I/2.0, I/2.0, -I/2.0, -I/2.0]
 
 function check_collision(x, y, yaw, kdtree, ox, oy)
 
@@ -76,7 +76,7 @@ function rect_check(ix, iy, iyaw, ox, oy)
             y2 = vry[i+1] - ly
             d1 = hypot(x1,y1)
             d2 = hypot(x2,y2)
-            theta1 = atan2(y1,x1)
+            theta1 = atan(y1,x1)
             tty = (-sin(theta1)*x2 + cos(theta1)*y2)
 
             tmp = (x1*x2+y1*y2)/(d1*d2)
